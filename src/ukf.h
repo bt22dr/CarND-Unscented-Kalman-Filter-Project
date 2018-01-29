@@ -90,8 +90,6 @@ public:
    * @param delta_t Time between k and k+1 in s
    */
   void Prediction(double delta_t);
-  void PredictRadarMeasurement(VectorXd* z_out, MatrixXd* S_out);
-  void PredictLidarMeasurement(VectorXd* z_out, MatrixXd* S_out);
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
@@ -108,7 +106,8 @@ public:
   void AugmentedSigmaPoints(VectorXd &x, MatrixXd* Xsig_out);
   void SigmaPointPrediction(MatrixXd &Xsig_aug, float dt, MatrixXd* Xsig_out);
   void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
-  void UpdateState(VectorXd* x_out, MatrixXd* P_out);
+  void UpdateState(MatrixXd &Zsig, VectorXd &z_pred, MatrixXd &S_pred,
+                   MeasurementPackage meas_package, int n_z);
 };
 
 #endif /* UKF_H */

@@ -7,7 +7,12 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
+#define LOG(desc, x) std::cout << desc << std::endl << x << std::endl;
+
 // TODO: 함수들 다 내 구현으로 바꾸기
+// TODO: NIS가 초반에 튀는 이유?
+// TODO: P 초기값 좋은게 뭔가?
+// TODO: yaw, yaw_d, yaw_dd의 좋은 초기값은 뭘까?
 
 /**
  * Initializes Unscented Kalman filter
@@ -18,7 +23,7 @@ UKF::UKF() {
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
-  use_radar_ = false;
+  use_radar_ = true;
 
   // initial state vector
   x_ = VectorXd(5);
@@ -58,8 +63,11 @@ UKF::UKF() {
   */
   is_initialized_ = false;
   
-  std_a_ = 2.0;
-  std_yawdd_ = M_PI / 8;
+  //std_a_ = 2.0;
+  //std_yawdd_ = M_PI / 8;
+  std_a_ = 2;
+  std_yawdd_ = M_PI/8;
+  
   n_x_= 5;
   n_aug_ = 7;
   lambda_ = 3 - n_aug_;
@@ -74,7 +82,7 @@ UKF::UKF() {
   }
   
   // Initialize state covariance matrix P
-  P_ = MatrixXd::Identity(n_x_, n_x_);
+  P_ = MatrixXd::Identity(n_x_, n_x_) * 0.1;
   
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 }
@@ -100,7 +108,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     std::cout << "Initialization" << std::endl;
     
     x_ = VectorXd(5);
-    // x_ << 1, 1, 1, 1, 1;
 
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       /**
@@ -110,7 +117,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       float phi = meas_package.raw_measurements_[1];
       float px = cos(phi) * rho;
       float py = sin(phi) * rho;
-      x_ << px, py, 0, 0, 0; // TODO: yaw, yaw_d, yaw_dd의 좋은 초기값은 뭘까?
+      x_ << px, py, 1, 1, 0; // TODO: yaw, yaw_d, yaw_dd의 좋은 초기값은 뭘까?
       //cout << "INIT X(RADAR): " << x_[0] << ", " << x_[0] << endl;
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
@@ -119,7 +126,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
        */
       float px = meas_package.raw_measurements_[0];
       float py = meas_package.raw_measurements_[1];
-      x_ << px, py, 0, 0, 0; // TODO: yaw, yaw_d, yaw_dd의 좋은 초기값은 뭘까?
+      x_ << px, py, 1, 1, 0; // TODO: yaw, yaw_d, yaw_dd의 좋은 초기값은 뭘까?
       //cout << "INIT X(Laser): " << x_[0] << ", " << x_[1] << endl;
     }
     
@@ -144,13 +151,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
     if (use_radar_ == true) {
-      std::cout << "Radar updates" << std::endl;
+      //std::cout << "Radar updates" << std::endl;
       UpdateRadar(meas_package);
     }
   } else {
     // Laser updates
     if (use_laser_ == true) {
-      std::cout << "Laser updates" << std::endl;
+      //std::cout << "Laser updates" << std::endl;
       UpdateLidar(meas_package);
     }
   }
@@ -189,7 +196,7 @@ void UKF::AugmentedSigmaPoints(VectorXd &x, MatrixXd* Xsig_out) {
   }
   
   //print result
-  std::cout << "Xsig_aug = " << std::endl << Xsig_aug << std::endl;
+  //std::cout << "Xsig_aug = " << std::endl << Xsig_aug << std::endl;
   
   //write result
   *Xsig_out = Xsig_aug;
@@ -245,7 +252,7 @@ void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, float dt, MatrixXd* Xsig_out)
   }
   
   //print result
-  std::cout << "Xsig_pred = " << std::endl << Xsig_pred << std::endl;
+  //std::cout << "Xsig_pred = " << std::endl << Xsig_pred << std::endl;
   
   //write result
   *Xsig_out = Xsig_pred;
@@ -278,10 +285,10 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out) {
   }
   
   //print result
-  std::cout << "Predicted state" << std::endl;
-  std::cout << x << std::endl;
-  std::cout << "Predicted covariance matrix" << std::endl;
-  std::cout << P << std::endl;
+  //std::cout << "Predicted state" << std::endl;
+  //std::cout << x << std::endl;
+  //std::cout << "Predicted covariance matrix" << std::endl;
+  //std::cout << P << std::endl;
   
   //write result
   *x_out = x;
@@ -339,8 +346,8 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     double p_y = Xsig_pred_(1,i);
     
     // measurement model
-    Zsig(0,i) = p_x;                        //px
-    Zsig(1,i) = p_y;                                 //py
+    Zsig(0,i) = p_x;
+    Zsig(1,i) = p_y;
   } // TODO: 이거 바꾸기
   
   //mean predicted measurement
@@ -371,56 +378,10 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   S_pred = S_pred + R;
   
   //print result
-  std::cout << "z_pred: " << std::endl << z_pred << std::endl;
-  std::cout << "S_pred: " << std::endl << S_pred << std::endl;
+  //std::cout << "z_pred: " << std::endl << z_pred << std::endl;
+  //std::cout << "S_pred: " << std::endl << S_pred << std::endl;
   
-  ////////////////
-  //
-  ////////////////
-  
-  //create matrix for cross correlation Tc
-  MatrixXd Tc = MatrixXd(n_x_, n_z);
-  
-  //calculate cross correlation matrix
-  Tc.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
-    
-    //residual
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-    //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-    
-    // state difference
-    VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    //angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
-    
-    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
-  }
-  
-  //Kalman gain K;
-  MatrixXd K = Tc * S_pred.inverse();
-  
-  VectorXd z = meas_package.raw_measurements_;
-  std::cout << "z:" << std::endl << z << std::endl;
-  std::cout << "z_pred:" << std::endl << z_pred << std::endl;
-  
-  //residual
-  VectorXd z_diff = z - z_pred;
-  
-  //angle normalization
-  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-  while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-  
-  //update state mean and covariance matrix
-  x_ = x_ + K * z_diff;
-  P_ = P_ - K*S_pred*K.transpose();
-  
-  //print result
-  std::cout << "Updated state x: " << std::endl << x_ << std::endl;
-  std::cout << "Updated state covariance P: " << std::endl << P_ << std::endl;
+  UpdateState(Zsig, z_pred, S_pred, meas_package, n_z);
 }
 
 /**
@@ -485,18 +446,19 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(n_z,n_z);
   R <<    std_radr_*std_radr_, 0, 0,
-  0, std_radphi_*std_radphi_, 0,
-  0, 0,std_radrd_*std_radrd_;
+          0, std_radphi_*std_radphi_, 0,
+          0, 0,std_radrd_*std_radrd_;
   S_pred = S_pred + R;
   
   //print result
-  std::cout << "z_pred: " << std::endl << z_pred << std::endl;
-  std::cout << "S_pred: " << std::endl << S_pred << std::endl;
+  //std::cout << "z_pred: " << std::endl << z_pred << std::endl;
+  //std::cout << "S_pred: " << std::endl << S_pred << std::endl;
   
-  ////////////////
-  //
-  ////////////////
-  
+  UpdateState(Zsig, z_pred, S_pred, meas_package, n_z);
+}
+
+void UKF::UpdateState(MatrixXd &Zsig, VectorXd &z_pred, MatrixXd &S_pred,
+                      MeasurementPackage meas_package, int n_z) {
   //create matrix for cross correlation Tc
   MatrixXd Tc = MatrixXd(n_x_, n_z);
   
@@ -522,11 +484,8 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //Kalman gain K;
   MatrixXd K = Tc * S_pred.inverse();
   
-  VectorXd z = meas_package.raw_measurements_;
-  std::cout << "z:" << std::endl << z << std::endl;
-  std::cout << "z_pred:" << std::endl << z_pred << std::endl;
-  
   //residual
+  VectorXd z = meas_package.raw_measurements_;
   VectorXd z_diff = z - z_pred;
   
   //angle normalization
@@ -538,6 +497,14 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   P_ = P_ - K*S_pred*K.transpose();
   
   //print result
-  std::cout << "Updated state x: " << std::endl << x_ << std::endl;
-  std::cout << "Updated state covariance P: " << std::endl << P_ << std::endl;
+  //std::cout << "Updated state x: " << std::endl << x_ << std::endl;
+  //std::cout << "Updated state covariance P: " << std::endl << P_ << std::endl;
+  
+  //print NIS
+  double nis = z_diff.transpose() * S_pred.inverse() * z_diff;
+  if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+    std::cout << "RADAR NIS," << nis << std::endl;
+  } else {
+    std::cout << "LASER NIS," << nis << std::endl;
+  }
 }
