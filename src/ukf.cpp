@@ -63,8 +63,6 @@ UKF::UKF() {
   */
   is_initialized_ = false;
   
-  //std_a_ = 2.0;
-  //std_yawdd_ = M_PI / 8;
   std_a_ = 2;
   std_yawdd_ = M_PI/8;
   
